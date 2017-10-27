@@ -1,3 +1,5 @@
+import heapq as hp
+
 import numpy as np
 import cv2
 
@@ -20,14 +22,47 @@ def get_dark_channel (img_in, patch_size=15):
 
     return img_dark
 
+def get_atmospheric_light (rgb_img_in, dark_img_in):
+    rows, cols = np.shape(dark_img_in)
+    pixels_amount = int(0.001*3*rows*cols)
+
+   # print pixels_amount
+
+    heap = []
+
+    for i in range (0, rows):
+        for j in range (0, cols):
+            hp.heappush(heap,(dark_img_in[i,j],i,j))
+
+            if len(heap) > pixels_amount:
+                hp.heappop(heap)
+
+    max_intensity = [0,0,0]
+    for i in range (0,len(heap)):
+        _,x,y = heap[i]
+
+        intensity = rgb_img_in[x,y,0] + rgb_img_in[x,y,1] + rgb_img_in[x,y,2]
+        if max_intensity[0] < intensity:
+            max_intensity = [intensity,x,y]
+
+    #_,x,y = max_intensity
+    #dark_img_in[x,y] = 0
+
+
+    return max_intensity
+
 
 def main():
 
-    image_in = cv2.imread("images/d.webp")
+    img_in = cv2.imread("images/cityscape.png")
 
-    img_dark = get_dark_channel(image_in)
+    dark_channel = get_dark_channel(img_in)
 
-    cv2.imshow("Image", img_dark)
+    #print np.mean(img_dark)
+
+    atmospheric_light = get_atmospheric_light(img_in, dark_channel)
+
+    cv2.imshow("Image", dark_channel)
 
     cv2.waitKey(0)
 
