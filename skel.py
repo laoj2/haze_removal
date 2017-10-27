@@ -14,8 +14,6 @@ def get_dark_channel (img_in, patch_size=15):
         for j in range (0, cols):
             img_min[i,j] = min([img_in[i,j,0], img_in[i,j,1], img_in[i,j,2]])
 
-        img_min = img_min.astype(np.uint8)
-
     #Minimum filter
     strel = cv2.getStructuringElement(cv2.MORPH_RECT, (patch_size,patch_size))
     img_dark = cv2.erode(img_min,strel)
@@ -25,8 +23,6 @@ def get_dark_channel (img_in, patch_size=15):
 def get_atmospheric_light (rgb_img_in, dark_img_in):
     rows, cols = np.shape(dark_img_in)
     pixels_amount = int(0.001*3*rows*cols)
-
-   # print pixels_amount
 
     heap = []
 
@@ -41,28 +37,50 @@ def get_atmospheric_light (rgb_img_in, dark_img_in):
     for i in range (0,len(heap)):
         _,x,y = heap[i]
 
-        intensity = rgb_img_in[x,y,0] + rgb_img_in[x,y,1] + rgb_img_in[x,y,2]
+        intensity = int(rgb_img_in[x,y,0]) + int(rgb_img_in[x,y,1]) + int(rgb_img_in[x,y,2])
         if max_intensity[0] < intensity:
             max_intensity = [intensity,x,y]
 
-    #_,x,y = max_intensity
-    #dark_img_in[x,y] = 0
+    _,x,y = max_intensity
+    return rgb_img_in[x,y]
 
+def get_transmission_map (hazy_img, atmospheric_light, w=0.95, patch_size=15):
 
-    return max_intensity
+    normalized_hazy_img = hazy_img.astype(np.float32)/atmospheric_light.astype(np.float32)
+
+    transmission_map = 1 - w*get_dark_channel(normalized_hazy_img,patch_size)
+
+    return transmission_map
+
+def get_scene_radiance(hazy_img, atmospheric_light, transmission_map, t0=0.1):
+    x,y,ch = np.shape(hazy_img)
+
+    radiance = hazy_img
+
+    for i in range (0,x):
+        for j in range (0,y):
+            for c in range (0,ch):
+                t = max(transmission_map[i,j].astype(np.float32),t0)
+                radiance[i,j,c] = atmospheric_light[c] + (hazy_img[i,j,c].astype(np.float32) - atmospheric_light[c])/t
+
+    return  radiance
 
 
 def main():
 
-    img_in = cv2.imread("images/cityscape.png")
+    hazy_img = cv2.imread("images/forest.png")
 
-    dark_channel = get_dark_channel(img_in)
+    dark_channel = get_dark_channel(hazy_img).astype(np.uint8)
 
-    #print np.mean(img_dark)
 
-    atmospheric_light = get_atmospheric_light(img_in, dark_channel)
+    atmospheric_light = get_atmospheric_light(hazy_img, dark_channel)
 
-    cv2.imshow("Image", dark_channel)
+    transmission_map = get_transmission_map(hazy_img, atmospheric_light)
+
+
+    radiance = get_scene_radiance(hazy_img, atmospheric_light,transmission_map)
+
+    cv2.imshow("Image", radiance)
 
     cv2.waitKey(0)
 
