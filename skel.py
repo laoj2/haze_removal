@@ -2,6 +2,8 @@ import heapq as hp
 
 import numpy as np
 import cv2
+from numpy.ma.core import log2
+
 
 def get_dark_channel (img_in, patch_size=15):
 
@@ -56,7 +58,7 @@ def get_scene_radiance(hazy_img, atmospheric_light, transmission_map, t0=0.1):
     x,y,ch = np.shape(hazy_img)
 
     radiance = hazy_img
-
+#994929797
     for i in range (0,x):
         for j in range (0,y):
             for c in range (0,ch):
@@ -65,10 +67,17 @@ def get_scene_radiance(hazy_img, atmospheric_light, transmission_map, t0=0.1):
 
     return  radiance
 
+def get_depth_map (hazy_img, transmission_map, beta=3):
+    depth = np.log(transmission_map)/-beta
+    depth = depth*255
+
+
+    return depth.astype(np.uint8)
+
 
 def main():
 
-    hazy_img = cv2.imread("images/forest.png")
+    hazy_img = cv2.imread("images/cityscape.png")
 
     dark_channel = get_dark_channel(hazy_img).astype(np.uint8)
 
@@ -80,11 +89,11 @@ def main():
 
     radiance = get_scene_radiance(hazy_img, atmospheric_light,transmission_map)
 
-    cv2.imshow("Image", radiance)
+    #cv2.imshow("Image", get_depth_map(hazy_img,transmission_map))
 
-    cv2.waitKey(0)
+    #cv2.waitKey(0)
 
 
 
-main()
+#main()
 
