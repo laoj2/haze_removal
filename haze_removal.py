@@ -1,8 +1,6 @@
 import heapq as hp
-
 import numpy as np
 import cv2
-from numpy.ma.core import log2
 
 
 def get_dark_channel (img_in, patch_size=15):
@@ -44,56 +42,56 @@ def get_atmospheric_light (rgb_img_in, dark_img_in):
             max_intensity = [intensity,x,y]
 
     _,x,y = max_intensity
+
     return rgb_img_in[x,y]
+
 
 def get_transmission_map (hazy_img, atmospheric_light, w=0.95, patch_size=15):
 
     normalized_hazy_img = hazy_img.astype(np.float32)/atmospheric_light.astype(np.float32)
-
     transmission_map = 1 - w*get_dark_channel(normalized_hazy_img,patch_size)
-
     return transmission_map
+
+
+def float_image_to_uint (im, x, y, ch=1):
+
+    if ch == 1:
+        for i in range (0,x):
+            for j in range (0,y):
+                if im[i, j] > 254.5:
+                    im[i, j] = 255
+                elif im[i, j] < 0.5:
+                    im[i, j] = 0
+
+    else:
+        for i in range (0,x):
+            for j in range (0,y):
+                for c in range (0,ch):
+                    if im[i,j,c] > 254.5:
+                        im[i,j,c] = 255
+                    elif im[i,j,c] < 0.5:
+                         im[i,j,c] = 0
+
+    return im.astype(np.uint8)
+
 
 def get_scene_radiance(hazy_img, atmospheric_light, transmission_map, t0=0.1):
     x,y,ch = np.shape(hazy_img)
 
-    radiance = hazy_img
-#994929797
+    radiance = np.copy(hazy_img).astype(np.float64)
+
     for i in range (0,x):
         for j in range (0,y):
             for c in range (0,ch):
-                t = max(transmission_map[i,j].astype(np.float32),t0)
-                radiance[i,j,c] = atmospheric_light[c] + (hazy_img[i,j,c].astype(np.float32) - atmospheric_light[c])/t
+                t = max(transmission_map[i,j],t0)
+                radiance[i,j,c] = atmospheric_light[c] + (hazy_img[i,j,c].astype(np.float64) - atmospheric_light[c])/t
 
-    return  radiance
+    return  float_image_to_uint(radiance, x, y, ch)
 
 def get_depth_map (hazy_img, transmission_map, beta=3):
     depth = np.log(transmission_map)/-beta
     depth = depth*255
 
+    x,y = depth.shape
 
-    return depth.astype(np.uint8)
-
-
-def main():
-
-    hazy_img = cv2.imread("images/cityscape.png")
-
-    dark_channel = get_dark_channel(hazy_img).astype(np.uint8)
-
-
-    atmospheric_light = get_atmospheric_light(hazy_img, dark_channel)
-
-    transmission_map = get_transmission_map(hazy_img, atmospheric_light)
-
-
-    radiance = get_scene_radiance(hazy_img, atmospheric_light,transmission_map)
-
-    #cv2.imshow("Image", get_depth_map(hazy_img,transmission_map))
-
-    #cv2.waitKey(0)
-
-
-
-#main()
-
+    return float_image_to_uint(depth,x,y)
