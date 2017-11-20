@@ -53,9 +53,11 @@ def get_transmission_map (hazy_img, atmospheric_light, w=0.95, patch_size=15):
     return transmission_map
 
 
-def float_image_to_uint (im, x, y, ch=1):
+def float_image_to_uint (im):
+    dims = im.shape
 
-    if ch == 1:
+    if len(dims) == 2:
+        x,y = dims
         for i in range (0,x):
             for j in range (0,y):
                 if im[i, j] > 254.5:
@@ -64,6 +66,7 @@ def float_image_to_uint (im, x, y, ch=1):
                     im[i, j] = 0
 
     else:
+        x,y,ch = dims
         for i in range (0,x):
             for j in range (0,y):
                 for c in range (0,ch):
@@ -86,12 +89,10 @@ def get_scene_radiance(hazy_img, atmospheric_light, transmission_map, t0=0.1):
                 t = max(transmission_map[i,j],t0)
                 radiance[i,j,c] = atmospheric_light[c] + (hazy_img[i,j,c].astype(np.float64) - atmospheric_light[c])/t
 
-    return  float_image_to_uint(radiance, x, y, ch)
+    return  float_image_to_uint(radiance)
 
 def get_depth_map (hazy_img, transmission_map, beta=3):
     depth = np.log(transmission_map)/-beta
     depth = depth*255
 
-    x,y = depth.shape
-
-    return float_image_to_uint(depth,x,y)
+    return float_image_to_uint(depth)
